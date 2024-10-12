@@ -7,9 +7,8 @@
 
 // ========================My updates ===============================
 // add terrainCorrection, change dem to ee.Image("USGS/3DEP/10m") 2022.01.03
-// add click and show Smoothed result app 2022.01.03
-// solve the image disordor after map(); make the correct order visulization charts
-// cluster to see if PFT has significant patterns
+// Smooth results 2022.01.03
+
 
 var ecoregion = ee.FeatureCollection("users/linziyu/WesternGreatLake/northern_highland_level4");
 var aoi =  ee.FeatureCollection("users/linziyu/WesternGreatLake/northern_highland_level4")
