@@ -111,95 +111,46 @@ def resample_bicubic(img):
 # outputs: best_unmixed_img with min_error_bands(in MAE)
 # version2 resolve the computational problem
 def MESMA_GEE_v2(EM_lst,EM_num_lst,tile_img,bands,type_name_lst,EM_num=2):
-    # create endmembers combination
-    type_lst = ['{}-{}'.format(j,t) for i,t in enumerate(type_name_lst) for j in range(EM_num_lst[i])]
-
-    numbers = [i for i in range(len(EM_lst))]
-    # n-EMs combinations based on  itertools.combinations
-    # index_lst_ = []
-    # for k in range(2,EM_num+1):
-    #
-    #     combinations = list(itertools.combinations(numbers, k))
-    #     index_lst_ = index_lst_ + combinations
-    index_lst_ = list(itertools.combinations(numbers, EM_num))
-
-    index_lst = []
-    for inds in index_lst_:
-        type_lst_sub = [type_lst[ind] for ind in inds]
-        if len(np.unique([t.split('-')[1] for t in type_lst_sub])) == EM_num:
-            index_lst.append(inds)
-
-    print(index_lst,len(index_lst))
-    N = 50
-    if len(index_lst)>N:
-        counter_lst = [[c for c in range(i-N,i)] for i in range(N,len(index_lst),N)]
-        if len(index_lst)%N>0:
-            counter_lst=counter_lst+[[c for c in range(len(index_lst)-len(index_lst)%N,len(index_lst))]]
-    else:
-        counter_lst = [[c for c in range(len(index_lst))]]
+    # create identical name for each endmember {type}_{cluster_index}
+    type_lst = ['{}-{}'.format(j, t) for i, t in enumerate(type_name_lst) for j in range(EM_num_lst[i])]
+    ind_list = [i for i in range(len(EM_lst))]
+    # generate endmembers combination
+    index_combinations = list(itertools.combinations(ind_list, EM_num))
+    # print(index_combinations)
 
     results_sum_all = tile_img.select([])
-    for c_num,counters in enumerate(counter_lst):
-        # print(counters)
-        error_bands = tile_img.select([])
-        unmixed_bands = tile_img.select([])
-        for i in counters:
-            inds = index_lst[i]
-            EM_lst_sub = [EM_lst[ind] for ind in inds]
-            type_lst_sub = [type_lst[ind] for ind in inds]
-            if len(np.unique([t.split('-')[1] for t in type_lst_sub]))==1:
-                continue
-            # else:
-            #     counter= counter+1
-            # # =============== GEE unmix() function =================
-            unmixed_img = tile_img.select(bands).toFloat().unmix(EM_lst_sub,True, True)\
-                .rename(['frac_{}_{}'.format(i,t) for t in type_lst_sub])
-            # print( unmixed_img.bandNames().getInfo())
-            # =========== RMSE for SMA============
-            tile_img_pred = ee.Image(ee.Array(EM_lst_sub).transpose()).toFloat()\
-                          .matrixMultiply(unmixed_img.toArray().toArray(1))\
-                          .arrayProject([0]).arrayFlatten([bands])
-            # error = tile_img.select(bands)\
-            #     .subtract(tile_img_pred).abs().reduce('mean').multiply(1000).toInt16().rename('MAE_{}'.format(i))
-            error = tile_img.select(bands).spectralDistance(tile_img_pred, 'sam') \
-                .multiply(10000).abs().toInt16().rename('SAM_{}'.format(i))
-
-            error_bands = error_bands.addBands(error) #.addBands([error.rename('frac_{}_{}'.format(i,t)) for t in type_lst_sub])
-            unmixed_bands = unmixed_bands.addBands(unmixed_img)
-
-        error_min = error_bands.reduce('min').rename('SAM_'+str(c_num))
-        error_min_mask = error_bands.eq(error_min)
-        # unmixed_bands = unmixed_bands.updateMask(MAE_min_mask).unmask(0)
-        best_unmixed_masked = tile_img.select([])
-        for i in counters:
-            inds = index_lst[i]
-            type_lst_sub = [type_lst[ind] for ind in inds]
-            # if len(np.unique([t.split('-')[1] for t in type_lst_sub]))==1:
-            #     continue
-            best_unmixed_band = unmixed_bands.select(['frac_{}_{}'.format(i,t) for t in type_lst_sub])\
-                .where(error_min_mask.select('SAM_'+str(i)).Not(),0)
-            best_unmixed_masked = best_unmixed_masked.addBands(best_unmixed_band)
+    error_bands = tile_img.select([])
+    unmixed_bands = tile_img.select([])
+    for num, inds_comb in enumerate(index_combinations):
+        # select endmember combination
+        EM_lst_sub = [EM_lst[ind] for ind in inds_comb]
+        type_lst_sub = [type_lst[ind] for ind in inds_comb]
+        # # =============== GEE unmix() function =================
+        unmixed_img = tile_img.select(bands).toFloat().unmix(EM_lst_sub, True, True) \
+            .rename(['frac_{}_{}'.format(num, t) for t in type_lst_sub])
+        unmixed_bands = unmixed_bands.addBands(unmixed_img)
+        # print( unmixed_img.bandNames().getInfo())
+        # =========== RMSE for SMA============
+        tile_img_pred = ee.Image(ee.Array(EM_lst_sub).transpose()).toFloat() \
+            .matrixMultiply(unmixed_img.toArray().toArray(1)) \
+            .arrayProject([0]).arrayFlatten([bands])
+        error = tile_img.select(bands) \
+            .subtract(tile_img_pred).abs().reduce('mean').toInt()
+        # match "unmixed_img"
+        error_bands = error_bands.addBands([error.rename('MAE_{}_{}'.format(num,t)) for t in type_lst_sub])
 
 
-        results_sum = tile_img.select([])
-        # print( np.unique([text.split('_')[-1].split('-')[1] for text in unmixed_bands.bandNames().getInfo()]))
-        for t in np.unique([text.split('_')[-1].split('-')[1] for text in unmixed_bands.bandNames().getInfo()]):
-            results_sum = results_sum.addBands(best_unmixed_masked.select(['.*'+t]).reduce('sum').rename(t+'_'+str(c_num)))
-        #     .where(results_sum.gt(1.1),1)
-        results_sum_all = results_sum_all.addBands(results_sum.addBands([error_min]))
-    # print(results_sum_all.bandNames().getInfo())
-    error_min = results_sum_all.select('SAM.*').reduce('min')
-    error_min_mask = results_sum_all.select('SAM.*').eq(error_min)
-    results_sum_all_masked =tile_img.select([])
-    for i in  range(len(counter_lst)):
-        s = '_'+str(i)
-        results_sum_all_masked = results_sum_all_masked.addBands(results_sum_all.select(['.*'+s]).where(error_min_mask.select('SAM'+s).Not(),0))
-    results = tile_img.select([])
+    MAE_min = error_bands.select('MAE.*').reduce('min')
+    MAE_min_mask = error_bands.select('MAE.*').eq(MAE_min)
+    # set the combination with lowest MAE as the final result
+    results_best = unmixed_bands.updateMask(MAE_min_mask)
+    results_by_type = tile_img.select([])
     for t in type_name_lst:
-        results = results.addBands(
-            results_sum_all_masked.select([t+'.*']).reduce('sum').rename(t))
-
-    results = results.divide(results.reduce('sum')).unmask(0).multiply(10000).addBands(error_min.rename('SAM_min')).clip(tile_img.geometry()).toUint16()
+        results_by_type = results_by_type.addBands(
+            results_best.select(['.*'+t]).reduce('sum').rename(t))
+    # sum to one
+    sum2one = results_by_type.reduce('sum')
+    results = results_by_type.divide(sum2one).unmask(0).multiply(10000).clip(tile_img.geometry()).toInt()
     return results
 
 #============== FCLS for earth engine ====================
