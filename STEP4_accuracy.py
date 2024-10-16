@@ -1,6 +1,5 @@
 # -*- encoding: utf-8 -*-
 '''
-@File    :   Unmixing_FigureSet.py   
 @Contact :   linziyu1996@gmail.com
 @License :   (C)Copyright 2021-2026
  
