@@ -76,12 +76,12 @@ for(var i=0;i<142;i=i+1){
   var time_interval = 'week'
   var time_lst = s1_col.aggregate_array(time_interval).distinct()
   var s1_mosaic = ee.ImageCollection(time_lst.map(function (n) {
-  var same_col = s1_col2.filterDate('2020-01-01', '2020-12-31').filterMetadata(time_interval, 'equals', n);
+  var same_col = s1_col.filterDate('2020-01-01', '2020-12-31').filterMetadata(time_interval, 'equals', n);
   var m = s1_col2.filterMetadata(time_interval, 'equals', n).first().get('month');
   var month_median = s1_month_median.filterMetadata('month', 'equals', m).first();
   // make sure there is image for every time stamp
   //better to use monthly median for gap-filling for weekly images for the lack of weekly valid data
-  var week_median = ee.Algorithms.If(same_col.size().gt(0), same_col.median(), s1_col2.filterMetadata('month', 'equals', m).median());
+  var week_median = ee.Algorithms.If(same_col.size().gt(0), same_col.median(), s1_col.filterMetadata('month', 'equals', m).median());
   var dstamp = ee.Date('2019-12-28').advance(n, time_interval);
   // when doing unmask to mosaic, make sure to generate a new image instead of using the old one (image.select)
   // because the system:footprint properties will be used to constraint the image boundary
