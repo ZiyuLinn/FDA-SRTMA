@@ -20,9 +20,7 @@ var s2cloud = ee.ImageCollection("COPERNICUS/S2_CLOUD_PROBABILITY"),
     ecoregion = ee.FeatureCollection("users/linziyu/WesternGreatLake/northern_highland_level4");
 ecoregion = ecoregion.geometry().transform('EPSG:4326', 10)//.aside(Map.addLayer)
 var ecoregion_bound  = ecoregion.buffer(7000).bounds().aside(print)
-
-Map.addLayer(ee.Feature(boundtiles.toList(6).get(2)))
-
+var boundtiles = ecoregion_bound.coveringGrid('EPSG:4326',10000)
 
 
 var band_RF=ee.List([ 'B2', 'B3', 'B4','B5','B6','B7', 'B8', 'B8A','B11','B12']);
