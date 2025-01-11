@@ -24,7 +24,7 @@ for SITE_NAME_m in SITE_NAME_model_lst:
 
         for SITE_NAME_m_ in SITE_NAME_m.split('-'):
 
-            pureEMs_name = glob.glob(r'Y:\Unmixing_Western_GreatLake\V2\\purepixels_{}_{}_R{}_thres*.csv'.format(SITE_NAME_m,R))[0]
+            pureEMs_name = glob.glob(r'Y:\Unmixing_Western_GreatLake\V2\\purepixels_{}_R{}_thres*.csv'.format(SITE_NAME_m,R))[0]
             library_2d = pd.read_csv(pureEMs_name, index_col=0)
             if sample_type != 'all':
                 library_2d = library_2d[library_2d.tile_num %3 != sample_type]
