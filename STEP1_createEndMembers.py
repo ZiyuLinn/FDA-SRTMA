@@ -20,7 +20,7 @@ for site in [ 'UNDE','STEI', 'CHEQ']:
     CRS = 'EPSG:4326'
 
     SITE = site
-    SCALE = 20
+    SCALE = 20 # can increase the scale to 100 to speed up extraction
 
     groudtruth =ee.Image('users/linziyu/WesternGreatLake/groundtruth_' + site + '_clip_10m')
     CRS = groudtruth.projection()
